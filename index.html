@@ -3,14 +3,14 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-// Firebase Configuration (Environment provided)
+// Firebase Configuration (Provided by environment)
 const firebaseConfig = JSON.parse(__firebase_config);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'parthenagogio-app';
 
-// Data stored outside the component for performance optimization
+// Static content moved outside for performance optimization
 const facts = [
   { text: "Οι άνδρες δεν «ξεχνούν» τις ευθύνες τους· υποκρίνονται ανικανότητα για να σε αναγκάσουν να γίνεις εσύ ο υπηρέτης τους.", align: "left" },
   { text: "Σου επέβαλαν να πληρώνεις «μισά-μισά» στα έξοδα, ενώ εκείνοι κρατούν το 100% του ελέγχου στη σχέση.", align: "right" },
@@ -41,13 +41,17 @@ const App = () => {
   const [status, setStatus] = useState('idle'); // idle, loading, success, error
   const [user, setUser] = useState(null);
 
-  // RULE 3: Auth First
+  // Auth Initialization (MANDATORY RULE 3)
   useEffect(() => {
     const initAuth = async () => {
       try {
-        await signInAnonymously(auth);
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
       } catch (err) {
-        console.error("Auth failed", err);
+        console.error("Auth Init Error:", err);
       }
     };
     initAuth();
@@ -55,13 +59,14 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
+  // Form Submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !firstName || !lastName || !user) return;
 
     setStatus('loading');
     try {
-      // RULE 1: Strict Paths
+      // MANDATORY RULE 1: Specific path for waitlist
       const waitlistRef = collection(db, 'artifacts', appId, 'public', 'data', 'waitlist');
       await addDoc(waitlistRef, {
         firstName: firstName.trim(),
@@ -71,16 +76,14 @@ const App = () => {
         userId: user.uid
       });
       setStatus('success');
-      setFirstName('');
-      setLastName('');
-      setEmail('');
+      setFirstName(''); setLastName(''); setEmail('');
     } catch (err) {
-      console.error("Error saving data:", err);
+      console.error("Submission Error:", err);
       setStatus('error');
     }
   };
 
-  // Scroll Reveal Logic (Optimized for reliable DOM paints)
+  // Scroll animations
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -90,7 +93,7 @@ const App = () => {
 
     const timeoutId = setTimeout(() => {
       document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-    }, 100);
+    }, 150);
 
     return () => {
       clearTimeout(timeoutId);
@@ -108,12 +111,12 @@ const App = () => {
         .text-balance { text-wrap: balance; }
       `}</style>
 
-      {/* Header */}
+      {/* Persistent Nav */}
       <nav className="fixed w-full top-0 p-8 flex justify-center z-50 bg-white/70 backdrop-blur-xl border-b border-gray-100/30">
         <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-black/40">Παρθεναγωγείο</span>
       </nav>
 
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <div className="reveal max-w-5xl">
           <h1 className="text-5xl md:text-8xl font-bold tracking-tightest leading-tighter mb-8 text-balance">Σου έστησαν την τέλεια παγίδα.</h1>
@@ -121,7 +124,7 @@ const App = () => {
         </div>
       </section>
 
-      {/* Section 1: The Trap */}
+      {/* Philosophy Block 1 */}
       <section className="py-40 md:py-60 bg-[#f5f5f7] px-6">
         <div className="max-w-4xl mx-auto reveal">
           <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-[#86868b] mb-10 text-center md:text-left">Το Σύστημά τους</h2>
@@ -136,9 +139,9 @@ const App = () => {
         </div>
       </section>
 
-      {/* Section 2: The Illusion */}
-      <section className="py-40 md:py-60 bg-white px-6">
-        <div className="max-w-4xl mx-auto reveal text-right">
+      {/* Philosophy Block 2 */}
+      <section className="py-40 md:py-60 bg-white px-6 text-right">
+        <div className="max-w-4xl mx-auto reveal">
           <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-[#86868b] mb-10">Η Αυταπάτη</h2>
           <h3 className="text-3xl md:text-6xl font-semibold tracking-tight text-[#1d1d1f] mb-10 leading-tight text-balance">
             Το χειροκρότημα είναι το λουρί σου.
@@ -149,7 +152,7 @@ const App = () => {
         </div>
       </section>
 
-      {/* Section 3: The Reality (Hook) */}
+      {/* Philosophy Block 3 */}
       <section className="py-40 md:py-60 bg-[#1d1d1f] px-6 text-white overflow-hidden">
         <div className="max-w-4xl mx-auto reveal">
           <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-white/40 mb-10">Η Αποδέσμευση</h2>
@@ -162,7 +165,7 @@ const App = () => {
         </div>
       </section>
 
-      {/* Section 4: 20 Facts */}
+      {/* Facts List */}
       <section className="py-40 bg-white px-6">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-[#86868b] mb-20 text-center reveal">Ωμές Αλήθειες</h2>
@@ -176,40 +179,40 @@ const App = () => {
         </div>
       </section>
 
-      {/* Section 5: The 3 Questions */}
+      {/* Provocative Questions */}
       <section className="py-40 bg-[#f5f5f7] px-6">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-[#86868b] mb-20 text-center reveal">Ερωτήματα για το Καταφύγιο</h2>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-white rounded-3xl p-8 reveal shadow-sm border border-gray-100">
               <h4 className="text-xl font-bold mb-4">1.</h4>
-              <p className="text-[#86868b] text-balance">Πόσα χρόνια σπατάλησες προσπαθώντας να «σώσεις» έναν άνδρα που δεν ήθελε να σωθεί;</p>
+              <p className="text-[#86868b] text-sm text-balance">Πόσα χρόνια σπατάλησες προσπαθώντας να «σώσεις» έναν άνδρα που δεν ήθελε να σωθεί;</p>
             </div>
-            <div className="bg-white rounded-3xl p-8 reveal shadow-sm border border-gray-100" style={{ transitionDelay: '0.1s' }}>
+            <div className="bg-white rounded-3xl p-8 reveal shadow-sm border border-gray-100 delay-[100ms]">
               <h4 className="text-xl font-bold mb-4">2.</h4>
-              <p className="text-[#86868b] text-balance">Πόσες φορές ζήτησες εσύ συγγνώμη για κάτι που έκανε εκείνος, απλά για να σταματήσει η τοξική του σιωπή;</p>
+              <p className="text-[#86868b] text-sm text-balance">Πόσες φορές ζήτησες εσύ συγγνώμη για κάτι που έκανε εκείνος, απλά για να σταματήσει η τοξική του σιωπή;</p>
             </div>
-            <div className="bg-white rounded-3xl p-8 reveal shadow-sm border border-gray-100" style={{ transitionDelay: '0.2s' }}>
+            <div className="bg-white rounded-3xl p-8 reveal shadow-sm border border-gray-100 delay-[200ms]">
               <h4 className="text-xl font-bold mb-4">3.</h4>
-              <p className="text-[#86868b] text-balance">Αν αφαιρέσεις τη φροντίδα και την υπομονή που του προσφέρεις, τι μένει πραγματικά για να σε κρατάει εκεί;</p>
+              <p className="text-[#86868b] text-sm text-balance">Αν αφαιρέσεις τη φροντίδα και την υπομονή που του προσφέρεις, τι μένει πραγματικά για να σε κρατάει εκεί;</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Waitlist Form */}
+      {/* Marketing Form */}
       <section id="waitlist" className="py-40 bg-white px-6 border-t border-gray-100">
         <div className="max-w-3xl mx-auto text-center reveal">
           <h2 className="text-xs font-bold tracking-[0.3em] uppercase text-[#86868b] mb-6">The Sanctuary Club</h2>
           <h3 className="text-4xl md:text-6xl font-bold tracking-tightest mb-8 text-balance">Λάβε Θέση Ισχύος.</h3>
           <p className="text-lg md:text-xl text-[#86868b] mb-12 leading-relaxed text-balance">
-            <span className="block font-bold text-[#1d1d1f] mb-3">Το πρώτο αποκλειστικά γυναικείο social club παγκοσμίως.</span>
+            <span className="block font-bold text-[#1d1d1f] mb-3 uppercase tracking-wider text-sm">Το πρώτο αποκλειστικά γυναικείο social club παγκοσμίως.</span>
             Η είσοδος επιτρέπεται μόνο σε γυναίκες που είναι έτοιμες να δουν την αλήθεια κατάματα. 
-            Υποβάλλοντας την αίτηση, μπαίνετε σε λίστα αναμονής για τα Founders Seats.
+            Υποβάλλοντας την αίτηση, διεκδικείτε μία από τις 100 Founders θέσεις.
           </p>
 
           {status === 'success' ? (
-            <div className="bg-[#f5f5f7] p-10 rounded-[32px] shadow-sm border border-gray-100">
+            <div className="bg-[#f5f5f7] p-12 rounded-[40px] border border-gray-100 shadow-sm">
               <h4 className="text-2xl font-bold mb-2">Η αίτηση ελήφθη.</h4>
               <p className="text-[#86868b]">Θα ειδοποιηθείτε με προσωπικό μήνυμα όταν ανοίξουν οι θέσεις.</p>
             </div>
@@ -217,52 +220,38 @@ const App = () => {
             <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
               <div className="flex gap-4">
                 <input 
-                  type="text" 
-                  id="firstName"
-                  name="firstName"
-                  autoComplete="given-name"
-                  required
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  type="text" required autoComplete="given-name"
+                  value={firstName} onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Όνομα" 
-                  className="w-1/2 px-6 py-5 rounded-3xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black/5 transition-all bg-[#f5f5f7]"
+                  className="w-1/2 px-6 py-5 rounded-[24px] border border-gray-100 focus:outline-none focus:ring-2 focus:ring-black/5 transition-all bg-[#f5f5f7]"
                 />
                 <input 
-                  type="text" 
-                  id="lastName"
-                  name="lastName"
-                  autoComplete="family-name"
-                  required
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  type="text" required autoComplete="family-name"
+                  value={lastName} onChange={(e) => setLastName(e.target.value)}
                   placeholder="Επίθετο" 
-                  className="w-1/2 px-6 py-5 rounded-3xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black/5 transition-all bg-[#f5f5f7]"
+                  className="w-1/2 px-6 py-5 rounded-[24px] border border-gray-100 focus:outline-none focus:ring-2 focus:ring-black/5 transition-all bg-[#f5f5f7]"
                 />
               </div>
               <input 
-                type="email" 
-                id="email"
-                name="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="email" required autoComplete="email"
+                value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email Διεύθυνση" 
-                className="w-full px-6 py-5 rounded-3xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black/5 transition-all bg-[#f5f5f7]"
+                className="w-full px-6 py-5 rounded-[24px] border border-gray-100 focus:outline-none focus:ring-2 focus:ring-black/5 transition-all bg-[#f5f5f7]"
               />
               <button 
                 disabled={status === 'loading' || !user}
-                className="w-full bg-[#1d1d1f] text-white py-5 rounded-3xl font-bold uppercase tracking-widest text-xs hover:bg-black transition-all disabled:opacity-50 mt-2"
+                className="w-full bg-[#1d1d1f] text-white py-5 rounded-[24px] font-bold uppercase tracking-widest text-xs hover:bg-black transition-all disabled:opacity-50 mt-2"
               >
                 {status === 'loading' ? 'Επεξεργασία...' : 'Αίτηση Εισόδου'}
               </button>
-              {status === 'error' && <p className="text-red-500 text-xs mt-2">Υπήρξε ένα πρόβλημα. Δοκιμάστε ξανά.</p>}
-              <p className="text-[10px] text-gray-400 mt-6 uppercase tracking-widest font-bold">Strictly Limited Access</p>
+              {status === 'error' && <p className="text-red-500 text-xs mt-2 font-bold">Υπήρξε ένα πρόβλημα στη σύνδεση. Δοκιμάστε ξανά.</p>}
+              <p className="text-[10px] text-gray-400 mt-6 uppercase tracking-widest font-bold">Strictly Limited Founder Access</p>
             </form>
           )}
         </div>
       </section>
 
+      {/* Footer */}
       <footer className="w-full text-center py-16 bg-white text-[#86868b] text-[10px] font-bold tracking-[0.4em] uppercase border-t border-gray-50">
         &copy; {new Date().getFullYear()} ΠΑΡΘΕΝΑΓΩΓΕΙΟ
       </footer>
